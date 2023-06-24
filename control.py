@@ -32,11 +32,9 @@ class LogFile(io.TextIOWrapper):
 class TestSaldos:
     def __init__(self):
         load_dotenv()
-        """
-        self.log_file = open("output.log", "a")
-        sys.stdout = LogFile(self.log_file.buffer)
-        sys.stderr = LogFile(self.log_file.buffer)
-        """
+        #self.log_file = open("output.log", "a")
+        #sys.stdout = LogFile(self.log_file.buffer)
+        #sys.stderr = LogFile(self.log_file.buffer)
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--no-sandbox")
@@ -47,8 +45,8 @@ class TestSaldos:
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
 
-    # def __del__(self):
-    #    self.log_file.close()
+    #def __del__(self):
+        #self.log_file.close()
 
     def setup_method(self, method):
         self.driver = webdriver.Chrome()
@@ -167,79 +165,69 @@ class TestSaldos:
 
     def getAllZohoRecords(self, cuota):
         # obtengo el numero del dia de hoy
-        today = datetime.today().day
-        if today >= 1 and today <= 31:
+        day = datetime.today().day
+        if day >= 1 and day <= 31:
             # al mes corriente le resto 1 para obtener el mes anterior
             month = datetime.today().month
             if month == 1:
                 month = 12
             else:
                 month = month - 1
-        # creo una lista de los meses del año para obtener el nombre del mes anterior
-        months = [
-            "zero",
-            "Enero",
-            "Febrero",
-            "Marzo",
-            "Abril",
-            "Mayo",
-            "Junio",
-            "Julio",
-            "Agosto",
-            "Septiembre",
-            "Octubre",
-            "Noviembre",
-            "Diciembre",
-        ]
         # obtengo el nombre del mes anterior
-        monthName = months[month]
+        monthName = datetime(datetime.today().year, month, 1).strftime('%B')
         # Solicitar el access token de zoho
         access_token = self.getZohoToken()
-        #print("Access token obtenido de la base de datos: ", access_token)
-        #print("Cuota: ", cuota)
-        #print("Mes: ", monthName)
         all_records = []
         limit = 200
-        offset = 1
+        urls = ['https://creator.zoho.com/api/v2/autocredito/autocredito/report/Bot_C{cuota}?from={offset}&limit={limit}']
         
-        while True:
-            # URL de la API de Zoho creator
-            url = 'https://creator.zoho.com/api/v2/autocredito/autocredito/report/Bot_C{cuota}?from={offset}&limit={limit}&criteria=(Campa_a!="{month}")'.format(
-                month=monthName, cuota=cuota, offset=offset, limit=limit
-            )
-            
-            headers = {"Authorization": "Zoho-oauthtoken " + access_token}
-            response = requests.get(url, headers=headers)
-            #print("Response: ", response.json())
-            
-            if response.json().get("code") == 3000:
-                records = response.json().get("data")
-                all_records.extend(records)
+        for url in urls:
+            offset = 1
+            while True:
+                formatted_url = url.format(offset=offset, limit=limit, cuota=cuota)
+                headers = {"Authorization": "Zoho-oauthtoken " + access_token}
+                response = requests.get(formatted_url, headers=headers)
                 
-                if len(records) < limit:
+                try:
+                    response_json = response.json()
+                except json.JSONDecodeError:
+                    print("Error al decodificar la respuesta JSON:", response.text)
                     break
+                
+                if response_json.get("code") == 3000:
+                    records = response_json.get("data")
+                    all_records.extend(records)
                     
-                offset += limit
-                
-            elif response.json().get("code") == 1030:
-                print("Access token expirado, se esta obteniendo uno nuevo...")
-                self.postZohoToken()
-                records = self.getAllZohoRecords(cuota)
-                return records
-                #return "expired"
-                
-            elif response.json().get("code") == 4000:
-                # terminar ejecucion del script por el limite de api de zoho
-                print("Limite de API de Zoho alcanzado")
-                print(response.json())
-                exit()
-                
-            else:
-                break
-        print("Cantidad de registros: ", len(all_records))
-        #print("Registros: ", all_records)
+                    if len(records) < limit:
+                        break
+                        
+                    offset += limit
+                    
+                elif response_json.get("code") == 1030:
+                    print("Access token expirado, se esta obteniendo uno nuevo...")
+                    self.postZohoToken()
+                    records = self.getAllZohoRecords(cuota)
+                    return records
+                    
+                elif response_json.get("code") == 4000:
+                    # terminar ejecucion del script por el limite de api de zoho
+                    print("Limite de API de Zoho alcanzado")
+                    print(response.json())
+                    exit()
+                    
+                else:
+                    break
+        
+        unique_records = []
+        for record in all_records:
+            if record not in unique_records:
+                unique_records.append(record)
+        all_records = unique_records
         #self.saveRecordsToExcel(all_records, "records.xlsx")
+        print("Cantidad de registros: ", len(all_records))
         return all_records
+        
+
     
     def saveRecordsToExcel(self,records, filename):
         df = pd.DataFrame(records)
@@ -247,6 +235,7 @@ class TestSaldos:
     
     def getOneZohoRecord(self, id):
         access_token = self.getZohoToken()
+        
         # URL de la API de Zoho creator
         url = "https://creator.zoho.com/api/v2/autocredito/autocredito/report/Copy_of_Reporte_de_venta_Organizadores?criteria=(ID={})".format(
             id
@@ -424,7 +413,7 @@ class TestSaldos:
         else:
             print("No se envio nada, data vacio")
         # enviar mensaje solo si el estado es distinto de activo y si la fecha del dia esta comprendida entre el 8 y el 31 de cada mes
-        if estado != "Activo" and datetime.now().day >= 8:
+        if estado != "Activo" and datetime.now().day >= 10:
          self.enviarMsj(id, cuota, estado, motivo, sorteo)
 
     def get_records_from_zoho(self, url, headers, limit):
@@ -502,11 +491,15 @@ class TestSaldos:
         nombre_archivo = self.create_excel_file(records)
         
         from_email=os.environ.get("SENDGRID_FROM_EMAIL")
-        to_emails=[os.environ.get("SENDGRID_TO_EMAILS")]
+        to_emails=[To('fernando@grupogf2.com.ar'),To('gonzalo.pero@grupogf2.com.ar'),To('florencia.pero@autocredito.net.ar'),To('emmanuel.aleman@autocredito.net.ar')]
         subject=f"Rechazadas - {fecha_hoy}"
         html_content="<strong>Se adjuntan los saldos rechazados</strong>"
         
         sendgrid_api_key=os.environ.get("SENDGRID_API_KEY")
+        print(sendgrid_api_key)
+        print(from_email)
+        print(to_emails)
+        
         
         self.send_email_with_attachment(sendgrid_api_key, from_email, to_emails, subject, html_content, nombre_archivo)
     
@@ -568,14 +561,14 @@ class TestSaldos:
         response = requests.post(url, data=data)
         print("Mensaje enviado")
     
-    def enviarMsjInicio(self,estado,chequeos):
+    def enviarMsjInicio(self,estado,chequeos,cuota):
         fecha = datetime.now().strftime("%d/%m/%Y")
         url = os.environ.get("TELEGRAM_URL")
         data = {"chat_id": os.environ.get("TELEGRAM_GROUP_ID")}
         if estado == "inicio":
-            msj = "En el dia: {fecha}, se inicio el control de saldos.".format(fecha=fecha)
+            msj = "En el dia: {fecha}, se inicio el control de saldos Cuota: {cuota}. Datos a chequear: {chequeos}".format(fecha=fecha,cuota=cuota,chequeos=chequeos)
         elif estado == "fin":
-            msj = "En el dia: {fecha}, se finalizo el control de saldos. Total chequeos: {chequeos}".format(fecha=fecha,chequeos=chequeos)
+            msj = "En el dia: {fecha}, se finalizo el control de saldos Cuota: {cuota}. Total chequeos: {chequeos}".format(fecha=fecha,cuota=cuota,chequeos=chequeos)
         data["text"] = msj
         response = requests.post(url, data=data)
         #print(response.json())
@@ -592,7 +585,8 @@ class TestSaldos:
             print("El access token ha expirado, se procede a obtener uno nuevo")
             self.postZohoToken()
             self.control(cuota)
-        self.enviarMsjInicio("inicio","")
+        #enviar mensaje al inicio del control
+        self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             self.vars["id"] = record['ID']
             self.vars["ss"] = record['SS_completa']
@@ -616,7 +610,7 @@ class TestSaldos:
                     )
                 )
             # hacer una pausa de 5 segundos
-            time.sleep(5)
+            time.sleep(3)
             try:
                 self.vars["estado"] = self.driver.find_element(
                 By.XPATH, "//tr[33]/td[2]"
@@ -644,7 +638,6 @@ class TestSaldos:
                 self.vars["countLinea"] = len(
                     self.driver.find_elements(By.XPATH, "//table[2]/tbody/tr")
                 )
-                print("Cantidad de lineas: {countLinea}".format(countLinea=self.vars["countLinea"]))
                 if self.vars["countLinea"] > 2:
                     start_row = 4
                     end_row = self.vars['countLinea'] - 2
@@ -660,6 +653,7 @@ class TestSaldos:
                         tenth_cell = row.find_element(By.XPATH, "./td[10]")
                         link = tenth_cell.find_elements(By.XPATH, './/a[text()="ver motivo"]')
                         estado = 'rechazado' if link else 'activo'
+                        print(f"cuotaRow: {cuotaRow}, cuota: {cuota}")
                         if estado == 'rechazado' and not result[cuotaRow].get('motivo'):
                             self.vars["window_handles"] = self.driver.window_handles
                             self.driver.find_element(
@@ -675,19 +669,14 @@ class TestSaldos:
                             self.driver.switch_to.window(self.vars["principal"])
                         else:
                             codigo_rechazo = ''
-                        result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
-                    #print(list(result.values()))
-                    records = list(result.values())
-                    #self.saveRecordsToExcel(records,"saldos.xlsx")
-                    self.estadoActivo(records)
+                        #solo ingresar si cuotaRow coincide con el numero de cuota
+                        if int(cuotaRow) == cuota:
+                            result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
+                            records = list(result.values())
+                            print(records)
+                            self.estadoActivo(records)
                 elif self.vars["countLinea"] == 2:
-                    self.patchZohoRecord(self.vars["id"],0,'Activo',"","")
-                print(
-                    "Solicitud: {ss} - Estado: Activo - CountLinea: {countLinea}".format(
-                        ss=self.vars["ss"], countLinea=self.vars["countLinea"]
-                    )
-                )      
-                    
+                    self.patchZohoRecord(self.vars["id"],0,'Activo',"","")                   
             elif self.vars["estado"] == "Renunciado":
                 self.vars["window_handles"] = self.driver.window_handles
                 self.driver.find_element(
@@ -737,9 +726,11 @@ class TestSaldos:
                             codigo_rechazo = self.vars["motivoRenuncia"]
                         else:
                             codigo_rechazo = ''
-                        result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
-                    records = list(result.values())
-                    self.estadoRenunciado(records)
+                        #solo ingresar si cuotaRow coincide con el numero de cuota
+                        if int(cuotaRow) == cuota:
+                            result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
+                            records = list(result.values())
+                            self.estadoRenunciado(records)
                 elif self.vars["countLinea"] == 2:
                     self.patchZohoRecord(self.vars["id"],0,'Renunciado',self.vars["motivoRenuncia"],"")
                 print(
@@ -763,8 +754,12 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
-        self.enviarMsjInicio("fin", totalChequeos)
-        self.enviarRechazos()
+        if cuota == 0:
+            self.enviarMsjInicio("fin", totalChequeos,0)
+            self.control(1)
+        else:
+            self.enviarMsjInicio("fin", totalChequeos,1)
+            self.enviarRechazos()
     def estadoRenunciado(self,record):
         for r in record:
             if r['estado'] == 'Renunciado' and r['cuota'] == '0':
@@ -810,10 +805,7 @@ class TestSaldos:
                 print("Estado ACTIVO en cuota: ",r['cuota'], "Importe: ",r['importe'])
             else:
                 print("Estado activo no contemplado en cuota: ",r['cuota'], "Importe: ",r['importe'])
-        
-        
-        
-
 if __name__ == "__main__":
     test = TestSaldos()
+    #test.getAllZohoRecords()
     test.control(0)
