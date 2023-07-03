@@ -761,58 +761,55 @@ class TestSaldos:
             #self.enviarMsjInicio("fin", totalChequeos,1)
             #self.enviarRechazos()
             print("Fin de control de saldos C" + str(cuota))
-    def estadoRenunciado(self,record):
+    def estadoRenunciado(self, record):
         for r in record:
-            if r['estado'] == 'Renunciado' and r['cuota'] == '0':
-                self.patchZohoRecord(r['id'], 0, 'Renunciado', r['motivo'], '')
-                print("Estado renunciado en cuota: ",r['cuota'], "Motivo: ",r['motivo'])     
-            elif r['estado'] == 'Renunciado' and r['cuota'] == '1':
-                self.patchZohoRecord(r['id'], 1, 'Renunciado', r['motivo'], '')
-                print("Estado renunciado en cuota: ",r['cuota'], "Motivo: ",r['motivo'])
-            elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '0':
-                self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'])
-                print("Estado COBRADO en cuota: ",r['cuota'], "Importe: ",r['importe'])
-            elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '1':
-                self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'])
-                print("Estado COBRADO en cuota: ",r['cuota'], "Importe: ",r['importe'])
-            elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '0':
-                self.patchZohoRecord(r['id'], 0, 'Activo', '', '')
-                print("Estado ACTIVO en cuota: ",r['cuota'], "Importe: ",r['importe'])
-            elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '1':
-                self.patchZohoRecord(r['id'], 1, 'Activo', '', '')
-                print("Estado ACTIVO en cuota: ",r['cuota'], "Importe: ",r['importe'])
+            if isinstance(r, dict):
+                if r['estado'] == 'Renunciado' and r['cuota'] == '0':
+                    self.patchZohoRecord(r['id'], 0, 'Renunciado', r['motivo'], '')
+                elif r['estado'] == 'Renunciado' and r['cuota'] == '1':
+                    self.patchZohoRecord(r['id'], 1, 'Renunciado', r['motivo'], '')
+                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '0':
+                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'])
+                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '1':
+                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'])
+                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '0':
+                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '')
+                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '1':
+                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '')
+                else:
+                    print(f"Estado {r['estado']} no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
             else:
-                print("Estado ",r['estado'], "no contemplado en cuota: ",r['cuota'], "Importe: ",r['importe'])       
-    def estadoActivo(self,record,estadoViejo):
-        print(record)
-        print(estadoViejo)
-        for r in record:
-            if r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo != 'Rechazado':
-                self.patchZohoRecord(r['id'], 0, 'Rechazado', r['motivo'], '')
-                print("Estado rechazado en cuota: ",r['cuota'], "Motivo: ",r['motivo'])
-            elif r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo == 'Rechazado':
-                self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '')
-                print("Estado rechazado previamente en cuota: ",r['cuota'], "Motivo: ",r['motivo'])
-            elif r['estado'] == 'rechazado' and r['cuota'] == '1' and estadoViejo != 'Rechazo - C0':
-                self.patchZohoRecord(r['id'], 1, 'Rechazado', r['motivo'], '')
-                print("Estado rechazado en cuota: ",r['cuota'], "Motivo: ",r['motivo'])
-            elif r['estado'] == 'rechazado' and r['cuota'] == '1' and estadoViejo == 'Rechazo - C0':
-                self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '')
-                print("Estado rechazado previamente en cuota: ",r['cuota'], "Motivo: ",r['motivo'])
-            elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '0':
-                self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'])
-                print("Estado COBRADO en cuota: ",r['cuota'], "Importe: ",r['importe'])
-            elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '1':
-                self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'])
-                print("Estado COBRADO en cuota: ",r['cuota'], "Importe: ",r['importe'])
-            elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '0':
-                self.patchZohoRecord(r['id'], 0, 'Activo', '', '')
-                print("Estado ACTIVO en cuota: ",r['cuota'], "Importe: ",r['importe'])
-            elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '1':
-                self.patchZohoRecord(r['id'], 1, 'Activo', '', '')
-                print("Estado ACTIVO en cuota: ",r['cuota'], "Importe: ",r['importe'])
+                print(f"Elemento no válido en record: {r}")
+ 
+    def estadoActivo(self, record, estadoViejo):
+        if len(record) > 1:
+            newRecord = record[1:]
+        else:
+            newRecord = record
+
+        for r in newRecord:
+            if isinstance(r, dict):
+                if r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo != 'Rechazado':
+                    self.patchZohoRecord(r['id'], 0, 'Rechazado', r['motivo'], '')
+                elif r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo == 'Rechazado':
+                    self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '')
+                elif r['estado'] == 'rechazado' and r['cuota'] == '1' and estadoViejo != 'Rechazo - C0':
+                    self.patchZohoRecord(r['id'], 1, 'Rechazado', r['motivo'], '')
+                elif r['estado'] == 'rechazado' and r['cuota'] == '1' and estadoViejo == 'Rechazo - C0':
+                    self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '')
+                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '0':
+                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'])
+                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '1':
+                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'])
+                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '0':
+                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '')
+                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '1':
+                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '')
+                else:
+                    print(f"Estado activo no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
             else:
-                print("Estado activo no contemplado en cuota: ",r['cuota'], "Importe: ",r['importe'])
+                print(f"Elemento no válido en newRecord: {r}")
+
 if __name__ == "__main__":
     test = TestSaldos()
     test.control(1)
