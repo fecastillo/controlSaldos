@@ -411,8 +411,8 @@ class TestSaldos:
         else:
             print("No se envio nada, data vacio")
         # enviar mensaje solo si el estado es distinto de activo y si la fecha del dia esta comprendida entre el 8 y el 31 de cada mes
-        #if estado != "Activo" and datetime.now().day >= 10:
-         #self.enviarMsj(id, cuota, estado, motivo, sorteo)
+        if estado != "Activo" and datetime.now().day >= 10:
+         self.enviarMsj(id, cuota, estado, motivo, sorteo)
 
     def get_records_from_zoho(self, url, headers, limit):
         records = []
@@ -584,7 +584,7 @@ class TestSaldos:
             self.postZohoToken()
             self.control(cuota)
         #enviar mensaje al inicio del control
-        #self.enviarMsjInicio("inicio",totalRecords,cuota)
+        self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             estadoViejo = record['Pago_saldo_01'] if cuota == 0 else record['Pago_saldo_02']
             print(f"Estado viejo: {estadoViejo}")
@@ -758,8 +758,8 @@ class TestSaldos:
             #self.enviarMsjInicio("fin", totalChequeos,0)
             self.control(1)
         else:
-            #self.enviarMsjInicio("fin", totalChequeos,1)
-            #self.enviarRechazos()
+            self.enviarMsjInicio("fin", totalChequeos,1)
+            self.enviarRechazos()
             print("Fin de control de saldos C" + str(cuota))
     def estadoRenunciado(self, record):
         for r in record:
