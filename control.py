@@ -32,9 +32,9 @@ class LogFile(io.TextIOWrapper):
 class TestSaldos:
     def __init__(self):
         load_dotenv()
-        #self.log_file = open("output.log", "a")
-        #sys.stdout = LogFile(self.log_file.buffer)
-        #sys.stderr = LogFile(self.log_file.buffer)
+        self.log_file = open("output.log", "a")
+        sys.stdout = LogFile(self.log_file.buffer)
+        sys.stderr = LogFile(self.log_file.buffer)
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--no-sandbox")
@@ -45,8 +45,8 @@ class TestSaldos:
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
 
-    #def __del__(self):
-        #self.log_file.close()
+    def __del__(self):
+        self.log_file.close()
 
     def setup_method(self, method):
         self.driver = webdriver.Chrome()
@@ -755,7 +755,7 @@ class TestSaldos:
                 )
             totalChequeos += 1
         if cuota == 0:
-            #self.enviarMsjInicio("fin", totalChequeos,0)
+            self.enviarMsjInicio("fin", totalChequeos,0)
             self.control(1)
         else:
             self.enviarMsjInicio("fin", totalChequeos,1)
@@ -812,4 +812,4 @@ class TestSaldos:
 
 if __name__ == "__main__":
     test = TestSaldos()
-    test.control(1)
+    test.control(0)
