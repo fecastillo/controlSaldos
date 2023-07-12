@@ -32,9 +32,9 @@ class LogFile(io.TextIOWrapper):
 class TestSaldos:
     def __init__(self):
         load_dotenv()
-        self.log_file = open("output.log", "a")
-        sys.stdout = LogFile(self.log_file.buffer)
-        sys.stderr = LogFile(self.log_file.buffer)
+        #self.log_file = open("output.log", "a")
+        #sys.stdout = LogFile(self.log_file.buffer)
+        #sys.stderr = LogFile(self.log_file.buffer)
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--no-sandbox")
@@ -45,8 +45,8 @@ class TestSaldos:
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
 
-    def __del__(self):
-        self.log_file.close()
+    #def __del__(self):
+        #self.log_file.close()
 
     def setup_method(self, method):
         self.driver = webdriver.Chrome()
@@ -502,11 +502,13 @@ class TestSaldos:
         self.send_email_with_attachment(sendgrid_api_key, from_email, to_emails, subject, html_content, nombre_archivo)
     
     def enviarMsj(self, id, cuota, estado, motivo, sorteo):
+        print(f"Estado en msj: {estado}")
+        msj = ""
         record = self.getOneZohoRecord(id)
         fecha = datetime.now().strftime("%d/%m/%Y")
         url = os.environ.get("TELEGRAM_URL")
         data = {"chat_id": os.environ.get("TELEGRAM_CHAT_ID")}
-        if estado == "Cobrado":
+        if estado == "Cobrado" or estado == "cobrado":
             msj = "En el dia: {fecha}, se aprobó el cobro de CUOTA {cuota} del cliente: {dni} - {nombre}. Organizador: {organizador}, Productor: {productor}. Nro de sorteo: {sorteo}. Fecha de nacimiento: {nacimiento}. Valor nominal: {valorNominal}. SS: {ss}".format(
                 fecha=fecha,
                 cuota=cuota,
@@ -520,7 +522,7 @@ class TestSaldos:
                 ss=record["ss"],
             )
             # print("aprobado")
-        elif estado == "Rechazado":
+        elif estado == "Rechazado" or estado == "rechazado":
             msj = "En el dia: {fecha}, se rechazó el cobro de CUOTA {cuota} del cliente: {dni} - {nombre}. Motivo: {motivo}. Organizador: {organizador}, Productor: {productor}. Fecha de nacimiento: {nacimiento}. Valor nominal: {valorNominal}. SS: {ss}".format(
                 fecha=fecha,
                 cuota=cuota,
@@ -534,7 +536,7 @@ class TestSaldos:
                 ss=record["ss"],
             )
             # print("rechazado", record['ss'])
-        elif estado == "Renunciado":
+        elif estado == "Renunciado" or estado == "renunciado":
             msj = "En el dia: {fecha}, el cliente: {dni} - {nombre}, renunció al plan en CUOTA {cuota}. Organizador: {organizador}, Productor: {productor}.".format(
                 fecha=fecha,
                 cuota=cuota,
@@ -543,7 +545,7 @@ class TestSaldos:
                 organizador=record["organizador"],
                 productor=record["productor"],
             )
-        elif estado == "Baja":
+        elif estado == "Baja" or estado == "baja":
             msj = "Se dió de baja en el dia: {fecha}, el cliente: {dni} - {nombre}. Organizador: {organizador}, Productor: {productor}.".format(
                 fecha=fecha,
                 cuota=cuota,
@@ -555,8 +557,10 @@ class TestSaldos:
             # print('Renunciado')
         # print(record)
         # insertar variable msj en data
-        data["text"] = msj
-        response = requests.post(url, data=data)
+        print(msj)
+        if msj:
+            data["text"] = msj
+            response = requests.post(url, data=data)
         #print("Mensaje enviado")
     
     def enviarMsjInicio(self,estado,chequeos,cuota):
@@ -584,7 +588,7 @@ class TestSaldos:
             self.postZohoToken()
             self.control(cuota)
         #enviar mensaje al inicio del control
-        self.enviarMsjInicio("inicio",totalRecords,cuota)
+        #self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             estadoViejo = record['Pago_saldo_01'] if cuota == 0 else record['Pago_saldo_02']
             print(f"Estado viejo: {estadoViejo}")
@@ -661,8 +665,8 @@ class TestSaldos:
                         #poner estado solo si la fecha de pago existe
                         if link and not fecha_pago:
                             estado = 'rechazado'
-                        elif fecha_pago == '':
-                            estado = 'activo'
+                        elif fecha_pago == '' or fecha_pago:
+                            estado = 'activo' 
                         print(f"cuotaRow: {cuotaRow}, cuota: {cuota}, fecha pago: {fecha_pago}")
                         if estado == 'rechazado' and not result[cuotaRow].get('motivo'):
                             self.vars["window_handles"] = self.driver.window_handles
@@ -788,6 +792,7 @@ class TestSaldos:
             newRecord = record
 
         for r in newRecord:
+            print(r)
             if isinstance(r, dict):
                 if r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo != 'Rechazado':
                     self.patchZohoRecord(r['id'], 0, 'Rechazado', r['motivo'], '')
