@@ -560,7 +560,7 @@ class TestSaldos:
             # print('Renunciado')
         # print(record)
         # insertar variable msj en data
-        print(msj)
+        #print(msj)
         if msj:
             data["text"] = msj
             response = requests.post(url, data=data)
@@ -592,7 +592,7 @@ class TestSaldos:
             self.control(cuota)
         #enviar mensaje al inicio del control
         #self.enviarMsjInicio("inicio",totalRecords,cuota)
-        #self.enviarMsjInicio("inicio",totalRecords,cuota)
+        self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             estadoViejo = record['Pago_saldo_01'] if cuota == 0 else record['Pago_saldo_02']
             #print(f"Estado viejo: {estadoViejo}")
