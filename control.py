@@ -22,16 +22,19 @@ from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, File
 from collections import defaultdict
 from dotenv import load_dotenv
 
-
+'''
 class LogFile(io.TextIOWrapper):
     def write(self, s):
         timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         super().write(f"{timestamp} {s}")
-
+'''
 
 class TestSaldos:
     def __init__(self):
         load_dotenv()
+        #self.log_file = open("output.log", "a")
+        #sys.stdout = LogFile(self.log_file.buffer)
+        #sys.stderr = LogFile(self.log_file.buffer)
         #self.log_file = open("output.log", "a")
         #sys.stdout = LogFile(self.log_file.buffer)
         #sys.stderr = LogFile(self.log_file.buffer)
@@ -589,13 +592,13 @@ class TestSaldos:
             self.control(cuota)
         #enviar mensaje al inicio del control
         #self.enviarMsjInicio("inicio",totalRecords,cuota)
+        #self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             estadoViejo = record['Pago_saldo_01'] if cuota == 0 else record['Pago_saldo_02']
-            print(f"Estado viejo: {estadoViejo}")
+            #print(f"Estado viejo: {estadoViejo}")
             self.vars["id"] = record['ID']
             self.vars["ss"] = record['SS_completa']
             self.vars["nro_ingres"] = self.vars["ss"].split("/", 1)[1]
-            #print("Solicitud: {ss}, ID: {id}".format(ss=self.vars["ss"], id=self.vars["id"]))
             self.driver.get("https://agencias.autocredito.com/extranet/agencias/consultas/datos.asp?nro_ingres={}".format(self.vars["ss"]))
             self.vars["isLogin"] = len(
                 self.driver.find_elements(By.XPATH, "//input[@value='aceptar']")
@@ -628,13 +631,11 @@ class TestSaldos:
             except:
                 self.vars["nroSorteo"] = 0
             self.vars["principal"] = self.driver.current_window_handle
-            '''
             print(
                 "SS: {ss}, estado: {estado}".format(
                     ss=self.vars["ss"], estado=self.vars["estado"]
                 )
             )
-            '''
             if self.vars["estado"] == "Activo":
                 self.driver.get(
                     "https://agencias.autocredito.com/extranet/agencias/consultas/ctacte.asp?nro_pre=5&nro_ingres={nroIngres}".format(
@@ -649,21 +650,22 @@ class TestSaldos:
                     end_row = self.vars['countLinea'] - 2
                     rows = self.driver.find_elements(By.XPATH, f"//table[2]/tbody/tr[position()>={start_row} and position()<={end_row}]")
                     sums = defaultdict(int)
+                    fechas = defaultdict(int)
                     result = defaultdict(dict)
                     for i, row in enumerate(rows, start=start_row):
                         first_cell = row.find_element(By.XPATH, "./td[1]")
                         cuotaRow = first_cell.text.strip()
                         fifth_cell = row.find_element(By.XPATH, "./td[5]")
-                        sixth_cell = row.find_element(By.XPATH, "./td[6]")
-                        fecha_pago = sixth_cell.text.strip()
-                        
+                        fecha_pago = row.find_element(By.XPATH, "./td[6]").text.strip()
+                        countFechaPago = len(fecha_pago)
+                        fechas[cuotaRow] += countFechaPago
                         imp_pagado = float(fifth_cell.text.replace('$', '').replace('.', '').replace(',', '.'))
                         sums[cuotaRow] += imp_pagado
                         tenth_cell = row.find_element(By.XPATH, "./td[10]")
                         link = tenth_cell.find_elements(By.XPATH, './/a[text()="ver motivo"]')
                         estado = ''
                         #poner estado solo si la fecha de pago existe
-                        if link and not fecha_pago:
+                        if link and not fechas[cuotaRow]:
                             estado = 'rechazado'
                         elif fecha_pago == '' or fecha_pago:
                             estado = 'activo' 
@@ -687,7 +689,6 @@ class TestSaldos:
                         if int(cuotaRow) == cuota:
                             result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
                             records = list(result.values())
-                            print(records)
                             self.estadoActivo(records, estadoViejo)
                 elif self.vars["countLinea"] == 2:
                     self.patchZohoRecord(self.vars["id"],0,'Activo',"","")                   
@@ -727,8 +728,7 @@ class TestSaldos:
                         tenth_cell = row.find_element(By.XPATH, "./td[10]")
                         sixth_cell = row.find_element(By.XPATH, "./td[6]")
                         fecha_pago = sixth_cell.text.strip()
-                        dataFecha = {'fecha' : fecha_pago}
-                        #print(dataFecha)
+
                         link = tenth_cell.find_elements(By.XPATH, './/a[text()="ver motivo"]')
                         #poner estado solo si la fecha de pago existe
                         if fecha_pago == '':
