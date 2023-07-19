@@ -500,10 +500,15 @@ class TestSaldos:
         #print(sendgrid_api_key)
         #print(from_email)
         #print(to_emails)
-        
-        
         self.send_email_with_attachment(sendgrid_api_key, from_email, to_emails, subject, html_content, nombre_archivo)
-    
+        
+    def enviarMsjCBU(self):
+        msj = "CUIT: 33-70495331-9 Nación Cbu: 0110553720055300055274 -  Santander Cbu: 0720463420000000180436 - BBVA Cbu: 0170294320000000129987 - Macro Cbu: 2850865630000000631641"
+        url = os.environ.get("TELEGRAM_URL")
+        data = {"chat_id": os.environ.get("TELEGRAM_CHAT_ID")}
+        data["text"] = msj
+        requests.post(url, data=data)
+        
     def enviarMsj(self, id, cuota, estado, motivo, sorteo):
         print(f"Estado en msj: {estado}")
         msj = ""
@@ -561,9 +566,13 @@ class TestSaldos:
         # print(record)
         # insertar variable msj en data
         #print(msj)
-        if msj:
+        if msj and cuota == 1:
             data["text"] = msj
-            response = requests.post(url, data=data)
+            requests.post(url, data=data)
+            self.enviarMsjCBU()
+        elif msj and cuota != 1:
+            data["text"] = msj
+            requests.post(url, data=data)
         #print("Mensaje enviado")
     
     def enviarMsjInicio(self,estado,chequeos,cuota):
