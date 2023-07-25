@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 # excel extensions
 *.xls
+*.xlsx
 *.DS_Store
 
 # C extensions
