@@ -109,62 +109,6 @@ class TestSaldos:
         # print("Access token obtenido de la base de datos: ")
         return access_token
 
-    def getZohoRecord(self, cuota):
-        # obtengo el numero del dia de hoy
-        today = datetime.today().day
-        if today >= 8 and today <= 31:
-            # al mes corriente le resto 1 para obtener el mes anterior
-            month = datetime.today().month
-            if month == 1:
-                month = 12
-            else:
-                month = month - 1
-        # creo una lista de los meses del año para obtener el nombre del mes anterior
-        months = [
-            "zero",
-            "Enero",
-            "Febrero",
-            "Marzo",
-            "Abril",
-            "Mayo",
-            "Junio",
-            "Julio",
-            "Agosto",
-            "Septiembre",
-            "Octubre",
-            "Noviembre",
-            "Diciembre",
-        ]
-        # obtengo el nombre del mes anterior
-        monthName = months[month]
-        # Solicitar el access token de zoho
-        access_token = self.getZohoToken()
-        # URL de la API de Zoho creator
-        url = 'https://creator.zoho.com/api/v2/autocredito/autocredito/report/Bot_{cuota}?from=0&limit=1&criteria=(Campa_a!="{month}")'.format(
-            month=monthName, cuota=cuota
-        )
-        # &criteria=(Campa_a!='Abril')
-        headers = {"Authorization": "Zoho-oauthtoken " + access_token}
-        response = requests.get(url, headers=headers)
-        if response.json().get("code") == 3000:
-            hayRegistros = True
-            ss = response.json().get("data")[0]["SS_completa"]
-            id = response.json().get("data")[0]["ID"]
-            # print("SS: ", ss, "ID: ", id, "Hay registros: ", hayRegistros)
-            return ss, id, hayRegistros
-        elif response.json().get("code") == 1030:
-            hayRegistros = "expired"
-            return hayRegistros
-        elif response.json().get("code") == 4000:
-          # terminar ejecucion del script por el limite de api de zoho
-            print("Limite de API de Zoho alcanzado")
-            print(response.json())
-            exit()
-        else:
-            hayRegistros = False
-            # print("No hay registros")
-            # print(response.json())
-            return '', '', hayRegistros
 
     def getAllZohoRecords(self, cuota):
         # obtengo el numero del dia de hoy
@@ -190,7 +134,9 @@ class TestSaldos:
                 formatted_url = url.format(offset=offset, limit=limit, cuota=cuota)
                 headers = {"Authorization": "Zoho-oauthtoken " + access_token}
                 response = requests.get(formatted_url, headers=headers)
-                
+                print(headers)
+                print(formatted_url)
+                print(response.json())
                 try:
                     response_json = response.json()
                 except json.JSONDecodeError:
@@ -206,7 +152,7 @@ class TestSaldos:
                         
                     offset += limit
                     
-                elif response_json.get("code") == 1030:
+                elif response_json.get("code") == 1030 or response_json.get("code") == 2948:
                     #print("Access token expirado, se esta obteniendo uno nuevo...")
                     self.postZohoToken()
                     records = self.getAllZohoRecords(cuota)
@@ -217,7 +163,10 @@ class TestSaldos:
                     print("Limite de API de Zoho alcanzado")
                     print(response.json())
                     exit()
-                    
+                elif response_json.get("code") == 2945:
+                    self.postZohoToken()
+                    records = self.getAllZohoRecords(cuota)
+                    return records
                 else:
                     break
         
@@ -262,7 +211,7 @@ class TestSaldos:
             }
             # print(datos)
             return datos
-        elif response.json().get("code") == 1030:
+        elif response.json().get("code") == 1030 or response.json().get("code") == 2948:
             print("El access token ha expirado, se procede a obtener uno nuevo")
             self.postZohoToken()
             self.getOneZohoRecord(id)
@@ -405,12 +354,18 @@ class TestSaldos:
             json_data = json.dumps(data)
             response = requests.patch(url, headers=headers, data=json_data)
             print(response.json())
-            if response.json().get("code") == 1030:
+            if response.json().get("code") == 1030 or response.json().get("code") == 2948:
                 print("Token expirado, se esta obteniendo uno nuevo...")
                 self.postZohoToken()
                 access_token = self.getZohoToken()
                 response = requests.patch(url, headers=headers, data=json_data)
                 print(response.json())
+            elif response.json().get("code") == 2945:
+                print("Token expirado, se esta obteniendo uno nuevo...")
+                self.postZohoToken()
+                access_token = self.getZohoToken()
+                response = requests.patch(url, headers=headers, data=json_data)
+                print(response.json()) 
         else:
             print("No se envio nada, data vacio")
         # enviar mensaje solo si el estado es distinto de activo y si la fecha del dia esta comprendida entre el 8 y el 31 de cada mes
@@ -428,7 +383,7 @@ class TestSaldos:
             try:
                 response = requests.get(url, headers=headers, params=params)
                 data = response.json()
-                if "code" in data and data["code"] == 1030:
+                if "code" in data and data["code"] == 1030 or data["code"] == 2948:
                     # Renovar el token y volver a intentar
                     self.postZohoToken()
                     access_token = self.getZohoToken()
@@ -600,7 +555,6 @@ class TestSaldos:
             self.postZohoToken()
             self.control(cuota)
         #enviar mensaje al inicio del control
-        #self.enviarMsjInicio("inicio",totalRecords,cuota)
         self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             estadoViejo = record['Pago_saldo_01'] if cuota == 0 else record['Pago_saldo_02']
@@ -826,4 +780,5 @@ class TestSaldos:
 
 if __name__ == "__main__":
     test = TestSaldos()
+    test.postZohoToken()
     test.control(0)
