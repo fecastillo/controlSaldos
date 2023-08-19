@@ -237,7 +237,7 @@ class TestSaldos:
             # print(response.json())
             return hayRegistros
 
-    def patchZohoRecord(self, id, cuota, estado, motivo, sorteo):
+    def patchZohoRecord(self, id, cuota, estado, motivo, sorteo, estadoViejo):
         access_token = self.getZohoToken()
         data = {None}
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -369,8 +369,8 @@ class TestSaldos:
         else:
             print("No se envio nada, data vacio")
         # enviar mensaje solo si el estado es distinto de activo y si la fecha del dia esta comprendida entre el 8 y el 31 de cada mes
-        if estado != "Activo" and datetime.now().day >= 10:
-         self.enviarMsj(id, cuota, estado, motivo, sorteo)
+        if estado == "Cobrado" and estadoViejo == "Rechazado" or estadoViejo == "Rechazo - C0" and datetime.now().day >= 10 :
+            self.enviarMsj(id, cuota, estado, motivo, sorteo)
 
     def get_records_from_zoho(self, url, headers, limit):
         records = []
@@ -472,7 +472,7 @@ class TestSaldos:
         url = os.environ.get("TELEGRAM_URL")
         data = {"chat_id": os.environ.get("TELEGRAM_CHAT_ID")}
         if estado == "Cobrado" or estado == "cobrado":
-            msj = "En el dia: {fecha}, se aprobó el cobro de CUOTA {cuota} del cliente: {dni} - {nombre}. Organizador: {organizador}, Productor: {productor}. Nro de sorteo: {sorteo}. Fecha de nacimiento: {nacimiento}. Valor nominal: {valorNominal}. SS: {ss}".format(
+            msj = "En el dia: {fecha}, ingresó el cobro de CUOTA {cuota} del cliente: {dni} - {nombre}, el nuevo estado es: PAGO. Organizador: {organizador}, Productor: {productor}. Nro de sorteo: {sorteo}. Campaña de venta: {campana}. Fecha de nacimiento: {nacimiento}. Valor nominal: {valorNominal}. SS: {ss}".format(
                 fecha=fecha,
                 cuota=cuota,
                 dni=record["dni"],
@@ -480,6 +480,7 @@ class TestSaldos:
                 organizador=record["organizador"],
                 productor=record["productor"],
                 sorteo=sorteo,
+                campana=record["Campa_a"],
                 nacimiento=record["nacimiento"],
                 valorNominal=record["valorNominal"],
                 ss=record["ss"],
@@ -521,13 +522,8 @@ class TestSaldos:
         # print(record)
         # insertar variable msj en data
         #print(msj)
-        if msj and cuota == 1:
-            data["text"] = msj
-            requests.post(url, data=data)
-            self.enviarMsjCBU()
-        elif msj and cuota != 1:
-            data["text"] = msj
-            requests.post(url, data=data)
+        data["text"] = msj
+        requests.post(url, data=data)
         #print("Mensaje enviado")
     
     def enviarMsjInicio(self,estado,chequeos,cuota):
@@ -654,7 +650,7 @@ class TestSaldos:
                             records = list(result.values())
                             self.estadoActivo(records, estadoViejo)
                 elif self.vars["countLinea"] == 2:
-                    self.patchZohoRecord(self.vars["id"],0,'Activo',"","")                   
+                    self.patchZohoRecord(self.vars["id"],0,'Activo',"","",'')                   
             elif self.vars["estado"] == "Renunciado":
                 self.vars["window_handles"] = self.driver.window_handles
                 self.driver.find_element(
@@ -707,13 +703,14 @@ class TestSaldos:
                         if int(cuotaRow) == cuota:
                             result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
                             records = list(result.values())
-                            self.estadoRenunciado(records)
+                            #self.estadoRenunciado(records)
+                            print("Saldo renunciado")
                 elif self.vars["countLinea"] == 2:
                     self.patchZohoRecord(self.vars["id"],0,'Renunciado',self.vars["motivoRenuncia"],"")       
             elif self.vars["estado"] == "Baja":  # Baja de solicitud
-                self.patchZohoRecord(self.vars["id"], cuota, "Baja", "Baja", "")
+                self.patchZohoRecord(self.vars["id"], cuota, "Baja", "Baja", "",'')
             elif self.vars["estado"] == "Sin informacion":  # Sin informacion
-                self.patchZohoRecord(self.vars["id"], cuota, "Activo", "Sin informacion", "")
+                self.patchZohoRecord(self.vars["id"], cuota, "Activo", "Sin informacion", "",'')
             else:  # se usa para cualquier opcion que no este contemplada dentro de todo codigo de ejecucion
                 print(
                     "Solicitud: {ss} - Estado: No contemplado".format(
@@ -758,21 +755,21 @@ class TestSaldos:
             print(r)
             if isinstance(r, dict):
                 if r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo != 'Rechazado':
-                    self.patchZohoRecord(r['id'], 0, 'Rechazado', r['motivo'], '')
+                    self.patchZohoRecord(r['id'], 0, 'Rechazado', r['motivo'], '',estadoViejo)
                 elif r['estado'] == 'rechazado' and r['cuota'] == '0' and estadoViejo == 'Rechazado':
-                    self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '')
+                    self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '',estadoViejo)
                 elif r['estado'] == 'rechazado' and r['cuota'] == '1' and estadoViejo != 'Rechazo - C0':
-                    self.patchZohoRecord(r['id'], 1, 'Rechazado', r['motivo'], '')
+                    self.patchZohoRecord(r['id'], 1, 'Rechazado', r['motivo'], '',estadoViejo)
                 elif r['estado'] == 'rechazado' and r['cuota'] == '1' and estadoViejo == 'Rechazo - C0':
-                    self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '')
+                    self.patchZohoRecord(r['id'], 0, 'Sin informacion', r['motivo'], '',estadoViejo)
                 elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '0':
-                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'])
+                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'],estadoViejo)
                 elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '1':
-                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'])
+                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'],estadoViejo)
                 elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '0':
-                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '')
+                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '',estadoViejo)
                 elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '1':
-                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '')
+                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '',estadoViejo)
                 else:
                     print(f"Estado activo no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
             else:
