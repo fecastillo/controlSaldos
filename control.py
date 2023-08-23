@@ -249,13 +249,13 @@ class TestSaldos:
             if cuota == 0 or cuota == '0':
                 if sorteo == 0 or sorteo == '0' or sorteo == '' or sorteo == None:
                     data = {
-                    "data": {"Pago_saldo_01": "Pagado - Sin Nro", "Pago_saldo_02":"Pendiente", "Nro_de_Sorteo": 000, "fecha_actualizacion_saldos": fecha}
+                    "data": {"Pago_saldo_0": "Pagado - Sin Nro", "Pago_saldo_1":"Pendiente", "Nro_de_Sorteo": 000, "fecha_actualizacion_saldos": fecha}
                 }
                 else:
                     data = {
                         "data": {
-                            "Pago_saldo_01": "Pagado",
-                            "Pago_saldo_02":"Pendiente",
+                            "Pago_saldo_0": "Pagado",
+                            "Pago_saldo_1":"Pendiente",
                             "Nro_de_Sorteo": sorteo,
                             "fecha_actualizacion_saldos": fecha,
                         }
@@ -263,29 +263,29 @@ class TestSaldos:
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_02": "Pagado",
+                        "Pago_saldo_1": "Pagado",
                         "Nro_de_Sorteo": sorteo,
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             else:
                 data = {
-                    "data": {"Pago_saldo_01": "Pagado - Sin Nro","Pago_saldo_02":"Pendiente", "Nro_de_Sorteo": 000, "fecha_actualizacion_saldos": fecha}
+                    "data": {"Pago_saldo_0": "Pagado - Sin Nro","Pago_saldo_1":"Pendiente", "Nro_de_Sorteo": 000, "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Rechazado":
             if cuota == 0:
                 data = {
                     "data": {
-                        "Pago_saldo_01": "Rechazado",
+                        "Pago_saldo_0": "Rechazado",
                         "Motivo_renuncia_saldo": motivo,
-                        "Pago_saldo_02": "Rechazo - C0",
+                        "Pago_saldo_1": "Rechazo - C0",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_02": "Rechazado",
+                        "Pago_saldo_1": "Rechazado",
                         "Motivo_renuncia_saldo": motivo,
                         "fecha_actualizacion_saldos": fecha,
                     }
@@ -294,8 +294,8 @@ class TestSaldos:
             if cuota == 0:
                 data = {
                     "data": {
-                        "Pago_saldo_01": "Renunciado",
-                        "Pago_saldo_02": "Renunciado",
+                        "Pago_saldo_0": "Renunciado",
+                        "Pago_saldo_1": "Renunciado",
                         "Motivo_renuncia_saldo": motivo,
                         "fecha_actualizacion_saldos": fecha,
                     }
@@ -303,7 +303,7 @@ class TestSaldos:
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_02": "Renunciado",
+                        "Pago_saldo_1": "Renunciado",
                         "Motivo_renuncia_saldo": motivo,
                         "fecha_actualizacion_saldos": fecha,
                     }
@@ -312,14 +312,14 @@ class TestSaldos:
             if cuota == 0:
                 data = {
                     "data": {
-                        "Pago_saldo_01": "Sin informacion",
+                        "Pago_saldo_0": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_02": "Sin informacion",
+                        "Pago_saldo_1": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
@@ -327,16 +327,16 @@ class TestSaldos:
             if cuota == 0 or cuota == '0':
                 data = {
                     "data": {
-                        "Pago_saldo_01": "Baja",
+                        "Pago_saldo_0": "Baja",
                         "Motivo_renuncia_saldo": motivo,
-                        "Pago_saldo_02": "Baja",
+                        "Pago_saldo_1": "Baja",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_02": "Baja",
+                        "Pago_saldo_1": "Baja",
                         "Motivo_renuncia_saldo": motivo,
                         "fecha_actualizacion_saldos": fecha,
                     }
@@ -436,6 +436,7 @@ class TestSaldos:
             print(f"Error al enviar correo electrónico con SendGrid: {e}")
 
     def enviarRechazos(self):
+        self.postZohoToken()
         access_token = self.getZohoToken()
         url = "https://creator.zoho.com/api/v2/autocredito/autocredito/report/Rechazos_Bot"
         headers = {"Authorization": "Zoho-oauthtoken " + access_token}
@@ -553,7 +554,7 @@ class TestSaldos:
         #enviar mensaje al inicio del control
         self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
-            estadoViejo = record['Pago_saldo_01'] if cuota == 0 else record['Pago_saldo_02']
+            estadoViejo = record['Pago_saldo_0'] if cuota == 0 else record['Pago_saldo_1']
             #print(f"Estado viejo: {estadoViejo}")
             self.vars["id"] = record['ID']
             self.vars["ss"] = record['SS_completa']
