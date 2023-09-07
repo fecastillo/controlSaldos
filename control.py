@@ -260,9 +260,13 @@ class TestSaldos:
                     }
                 }
             else:
+                ##data se arma dinamico con la cuota
                 data = {
-                    "data": {"Pago_saldo_0": "Pagado - Sin Nro","Pago_saldo_1":"Pendiente", "Nro_de_Sorteo": 000, "fecha_actualizacion_saldos": fecha}
+                    "data": {
+                             f"Pago_saldo_{cuota}": "Pagado",
+                             "fecha_actualizacion_saldos": fecha}
                 }
+                
         elif estado == "Rechazado":
             if cuota == 0:
                 data = {
@@ -280,6 +284,12 @@ class TestSaldos:
                         "Motivo_renuncia_saldo": motivo,
                         "fecha_actualizacion_saldos": fecha,
                     }
+                }
+            else:
+                data = {
+                    "data": {
+                             f"Pago_saldo_{cuota}": "Rechazado",
+                             "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Renunciado":
             if cuota == 0:
@@ -299,6 +309,13 @@ class TestSaldos:
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
+            else:
+                data = {
+                    "data": {
+                             f"Pago_saldo_{cuota}": "Renunciado",
+                             "Motivo_renuncia_saldo": motivo,
+                             "fecha_actualizacion_saldos": fecha}
+                }
         elif estado == "Activo":
             if cuota == 0:
                 data = {
@@ -313,6 +330,13 @@ class TestSaldos:
                         "Pago_saldo_1": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
+                }
+            else:
+                data = {
+                    "data": {
+                             f"Pago_saldo_{cuota}": "Sin informacion",
+                             "fecha_actualizacion_saldos": fecha
+                             }
                 }
         elif estado == "Baja":
             if cuota == 0 or cuota == '0':
@@ -331,6 +355,13 @@ class TestSaldos:
                         "Motivo_renuncia_saldo": motivo,
                         "fecha_actualizacion_saldos": fecha,
                     }
+                }
+            else:
+                data = {
+                    "data": {
+                             f"Pago_saldo_{cuota}": "Baja",
+                             "Motivo_renuncia_saldo": motivo,
+                             "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Sin informacion":
             data = {
@@ -715,10 +746,40 @@ class TestSaldos:
         if cuota == 0:
             self.enviarMsjInicio("fin", totalChequeos,0)
             self.control(1)
-        else:
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 1:
             self.enviarMsjInicio("fin", totalChequeos,1)
+            self.control(2)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 2:
+            self.enviarMsjInicio("fin", totalChequeos,2)
+            self.control(3)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 3:
+            self.enviarMsjInicio("fin", totalChequeos,3)
+            self.control(4)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 4:
+            self.enviarMsjInicio("fin", totalChequeos,4)
+            self.control(5)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 5:
+            self.enviarMsjInicio("fin", totalChequeos,5)
+            self.control(6)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 6:
+            self.enviarMsjInicio("fin", totalChequeos,6)
+            self.control(7)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 7:
+            self.enviarMsjInicio("fin", totalChequeos,7)
+            self.control(8)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 8:
+            self.enviarMsjInicio("fin", totalChequeos,8)
             self.enviarRechazos()
             print("Fin de control de saldos C" + str(cuota))
+            
     def estadoRenunciado(self, record):
         for r in record:
             if isinstance(r, dict):
