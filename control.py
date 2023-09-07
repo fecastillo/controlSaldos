@@ -111,17 +111,6 @@ class TestSaldos:
 
 
     def getAllZohoRecords(self, cuota):
-        # obtengo el numero del dia de hoy
-        day = datetime.today().day
-        if day >= 1 and day <= 31:
-            # al mes corriente le resto 1 para obtener el mes anterior
-            month = datetime.today().month
-            if month == 1:
-                month = 12
-            else:
-                month = month - 1
-        # obtengo el nombre del mes anterior
-        monthName = datetime(datetime.today().year, month, 1).strftime('%B')
         # Solicitar el access token de zoho
         access_token = self.getZohoToken()
         all_records = []
@@ -134,9 +123,9 @@ class TestSaldos:
                 formatted_url = url.format(offset=offset, limit=limit, cuota=cuota)
                 headers = {"Authorization": "Zoho-oauthtoken " + access_token}
                 response = requests.get(formatted_url, headers=headers)
-                print(headers)
+                #print(headers)
                 print(formatted_url)
-                print(response.json())
+                #print(response.json())
                 try:
                     response_json = response.json()
                 except json.JSONDecodeError:
@@ -208,6 +197,7 @@ class TestSaldos:
                 "nacimiento": response.json().get("data")[0]["Fecha_de_nacimiento"],
                 "valorNominal": response.json().get("data")[0]["Valor_nominal"],
                 "ss": response.json().get("data")[0]["Numero_de_SS"],
+                "campana": response.json().get("data")[0]["Campa_a"],
             }
             # print(datos)
             return datos
@@ -228,6 +218,7 @@ class TestSaldos:
                 "nacimiento": response.json().get("data")[0]["Fecha_de_nacimiento"],
                 "valorNominal": response.json().get("data")[0]["Valor_nominal"],
                 "ss": response.json().get("data")[0]["Numero_de_SS"],
+                "campana": response.json().get("data")[0]["Campa_a"],
             }
             # print(datos)
             return datos
@@ -369,8 +360,9 @@ class TestSaldos:
         else:
             print("No se envio nada, data vacio")
         # enviar mensaje solo si el estado es distinto de activo y si la fecha del dia esta comprendida entre el 8 y el 31 de cada mes
-        if estado == "Cobrado" and estadoViejo == "Rechazado" or estadoViejo == "Rechazo - C0" and datetime.now().day >= 10 :
-            self.enviarMsj(id, cuota, estado, motivo, sorteo)
+        if estado != "Activo" and datetime.now().day >= 10 :
+            self.enviarMsj(id, cuota, estado, motivo, sorteo, estadoViejo)
+       
 
     def get_records_from_zoho(self, url, headers, limit):
         records = []
@@ -465,14 +457,15 @@ class TestSaldos:
         data["text"] = msj
         requests.post(url, data=data)
         
-    def enviarMsj(self, id, cuota, estado, motivo, sorteo):
+    def enviarMsj(self, id, cuota, estado, motivo, sorteo, estadoViejo):
         print(f"Estado en msj: {estado}")
         msj = ""
         record = self.getOneZohoRecord(id)
+        print(record)
         fecha = datetime.now().strftime("%d/%m/%Y")
         url = os.environ.get("TELEGRAM_URL")
         data = {"chat_id": os.environ.get("TELEGRAM_CHAT_ID")}
-        if estado == "Cobrado" or estado == "cobrado":
+        if estado == "Cobrado" or estado == "cobrado" and estadoViejo == "Rechazado" or estadoViejo == "rechazado" or estadoViejo == "Rechazo - C0" or estadoViejo == "rechazo - c0":
             msj = "En el dia: {fecha}, ingresó el cobro de CUOTA {cuota} del cliente: {dni} - {nombre}, el nuevo estado es: PAGO. Organizador: {organizador}, Productor: {productor}. Nro de sorteo: {sorteo}. Campaña de venta: {campana}. Fecha de nacimiento: {nacimiento}. Valor nominal: {valorNominal}. SS: {ss}".format(
                 fecha=fecha,
                 cuota=cuota,
@@ -481,7 +474,7 @@ class TestSaldos:
                 organizador=record["organizador"],
                 productor=record["productor"],
                 sorteo=sorteo,
-                campana=record["Campa_a"],
+                campana=record["campana"],
                 nacimiento=record["nacimiento"],
                 valorNominal=record["valorNominal"],
                 ss=record["ss"],
@@ -704,7 +697,7 @@ class TestSaldos:
                         if int(cuotaRow) == cuota:
                             result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
                             records = list(result.values())
-                            #self.estadoRenunciado(records)
+                            self.estadoRenunciado(records)
                             print("Saldo renunciado")
                 elif self.vars["countLinea"] == 2:
                     self.patchZohoRecord(self.vars["id"],0,'Renunciado',self.vars["motivoRenuncia"],"")       
@@ -730,17 +723,17 @@ class TestSaldos:
         for r in record:
             if isinstance(r, dict):
                 if r['estado'] == 'Renunciado' and r['cuota'] == '0':
-                    self.patchZohoRecord(r['id'], 0, 'Renunciado', r['motivo'], '')
+                    self.patchZohoRecord(r['id'], 0, 'Renunciado', r['motivo'], '', '')
                 elif r['estado'] == 'Renunciado' and r['cuota'] == '1':
-                    self.patchZohoRecord(r['id'], 1, 'Renunciado', r['motivo'], '')
+                    self.patchZohoRecord(r['id'], 1, 'Renunciado', r['motivo'], '', '')
                 elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '0':
-                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'])
+                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'],'')
                 elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == '1':
-                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'])
+                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'],'')
                 elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '0':
-                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '')
+                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '','')
                 elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == '1':
-                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '')
+                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '','')
                 else:
                     print(f"Estado {r['estado']} no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
             else:
