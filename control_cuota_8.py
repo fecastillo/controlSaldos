@@ -1,3 +1,6 @@
+
+
+
 import time
 import requests
 import json
@@ -47,21 +50,7 @@ class TestSaldos:
         options.add_argument("--log-level=3")  # Deshabilitar el registro del navegador
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
-    ##defino los variables cuotas 1 rechazada, cuota 1 renunciada, cuota 1 activa, cuota 0 rechazada, cuota 0 renunciada, cuota 0 activa para poder enviarle el estado del mensaje
-        self.cuotaRechazada = 0
-        self.cuotaRenunciada = 0
-        self.cuotaActiva = 0
-        self.cuotaCobrada = 0
-        self.cuotaBaja = 0
-        self.cuotaSinInformacion = 0
-    #funcion para volver a 0 las variables de las cuotas
-    def resetCuotas(self):
-        self.cuotaRechazada = 0
-        self.cuotaRenunciada = 0
-        self.cuotaActiva = 0
-        self.cuotaCobrada = 0
-        self.cuotaBaja = 0
-        self.cuotaSinInformacion = 0
+
     #def __del__(self):
         #self.log_file.close()
 
@@ -181,7 +170,9 @@ class TestSaldos:
         #self.saveRecordsToExcel(all_records, "records.xlsx")
         print("Cantidad de registros: ", len(all_records))
         return all_records
-          
+        
+
+    
     def saveRecordsToExcel(self,records, filename):
         df = pd.DataFrame(records)
         df.to_excel(filename, index=False)
@@ -235,7 +226,6 @@ class TestSaldos:
         )
         headers = {"Authorization": "Zoho-oauthtoken " + access_token}
         if estado == "Cobrado":
-            self.cuotaCobrada += 1
             if cuota == 0 or cuota == '0':
                 if sorteo == 0 or sorteo == '0' or sorteo == '' or sorteo == None:
                     data = {
@@ -267,7 +257,6 @@ class TestSaldos:
                 }
                 
         elif estado == "Rechazado":
-            self.cuotaRechazada += 1
             if cuota == 0:
                 data = {
                     "data": {
@@ -292,7 +281,6 @@ class TestSaldos:
                              "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Renunciado":
-            self.cuotaRenunciada += 1
             if cuota == 0:
                 data = {
                     "data": {
@@ -318,7 +306,6 @@ class TestSaldos:
                              "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Activo":
-            self.cuotaActiva += 1
             if cuota == 0:
                 data = {
                     "data": {
@@ -341,7 +328,6 @@ class TestSaldos:
                              }
                 }
         elif estado == "Baja":
-            self.cuotaBaja += 1
             if cuota == 0 or cuota == '0':
                 data = {
                     "data": {
@@ -367,7 +353,6 @@ class TestSaldos:
                              "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Sin informacion":
-            self.cuotaSinInformacion += 1
             data = {
                     "data": {
                         "fecha_actualizacion_saldos": fecha,
@@ -435,36 +420,6 @@ class TestSaldos:
         data["text"] = msj
         response = requests.post(url, data=data)
         #print(response.json())
-    def enviarMsjResumenCuota(self,cuota):
-        fecha = datetime.now().strftime("%d/%m/%Y")
-        url = os.environ.get("TELEGRAM_URL")
-        data = {"chat_id": os.environ.get("TELEGRAM_GROUP_ID")}
-        msj = f"Cuota: {cuota} - Rechazadas: {self.cuotaRechazada} - Renunciadas: {self.cuotaRenunciada} - Activas: {self.cuotaActiva} - Cobradas: {self.cuotaCobrada} - Bajas: {self.cuotaBaja} - Sin informacion: {self.cuotaSinInformacion}"
-        data["text"] = msj
-        response = requests.post(url, data=data)
-        #print(response.json())    
-    def enviarRechazos(self):
-        self.postZohoToken()
-        access_token = self.getZohoToken()
-        url = "https://creator.zoho.com/api/v2/autocredito/autocredito/report/Rechazos_Bot"
-        headers = {"Authorization": "Zoho-oauthtoken " + access_token}
-        
-        records = self.get_records_from_zoho(url, headers, 200)
-        
-        fecha_hoy = datetime.now().strftime('%d-%m-%Y')
-        
-        nombre_archivo = self.create_excel_file(records)
-        
-        from_email=os.environ.get("SENDGRID_FROM_EMAIL")
-        to_emails=[To('fernando@grupogf2.com.ar'),To('gonzalo.pero@grupogf2.com.ar'),To('florencia.pero@autocredito.net.ar'),To('emmanuel.aleman@autocredito.net.ar')]
-        subject=f"Rechazadas - {fecha_hoy}"
-        html_content="<strong>Se adjuntan los saldos rechazados</strong>"
-        
-        sendgrid_api_key=os.environ.get("SENDGRID_API_KEY")
-        #print(sendgrid_api_key)
-        #print(from_email)
-        #print(to_emails)
-        self.send_email_with_attachment(sendgrid_api_key, from_email, to_emails, subject, html_content, nombre_archivo)
 
     def control(self, cuota):
         #es una version mejorada y mas rapida del metodo test_saldos
@@ -554,7 +509,7 @@ class TestSaldos:
                             estado = 'rechazado'
                         elif fecha_pago == '' or fecha_pago:
                             estado = 'activo' 
-                        print(f"cuotaRow: {cuotaRow}, cuota: {cuota}, fecha pago: {fecha_pago}, estado: {estado}")
+                        print(f"cuotaRow: {cuotaRow}, cuota: {cuota}, fecha pago: {fecha_pago}")
                         if estado == 'rechazado' and not result[cuotaRow].get('motivo'):
                             self.vars["window_handles"] = self.driver.window_handles
                             self.driver.find_element(
@@ -644,18 +599,9 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
-        if cuota == 0:
-            self.enviarMsjInicio("fin", totalChequeos,0)
-            self.enviarMsjResumenCuota(0)
-            self.resetCuotas()
-            self.control(1)
-            print("Fin de control de saldos C" + str(cuota))
-        elif cuota == 1:
-            self.enviarMsjInicio("fin", totalChequeos,1)
-            self.enviarMsjResumenCuota(1)
-            self.resetCuotas()
-            self.enviarRechazos()
-            print("Fin de control de saldos C" + str(cuota))
+        
+        self.enviarMsjInicio("fin", totalChequeos,cuota)
+        print("Fin de control de saldos C" + str(cuota))
             
     def estadoRenunciado(self, record, cuotaChequeada):
         for r in record:
@@ -702,5 +648,5 @@ class TestSaldos:
 if __name__ == "__main__":
     test = TestSaldos()
     test.postZohoToken()
-    test.control(0)
+    test.control(8)
     #test.enviarRechazos()
