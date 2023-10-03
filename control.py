@@ -645,16 +645,52 @@ class TestSaldos:
                 )
             totalChequeos += 1
         if cuota == 0:
-            self.enviarMsjInicio("fin", totalChequeos,0)
-            self.enviarMsjResumenCuota(0)
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
             self.control(1)
             print("Fin de control de saldos C" + str(cuota))
         elif cuota == 1:
-            self.enviarMsjInicio("fin", totalChequeos,1)
-            self.enviarMsjResumenCuota(1)
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
             self.enviarRechazos()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(2)
+        elif cuota == 2:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(3)
+        elif cuota == 3:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(4)
+        elif cuota == 4:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(5)
+        elif cuota == 5:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(6)
+        elif cuota == 6:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(7)
+        elif cuota == 7:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
             print("Fin de control de saldos C" + str(cuota))
             
     def estadoRenunciado(self, record, cuotaChequeada):
