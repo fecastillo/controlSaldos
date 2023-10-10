@@ -322,21 +322,18 @@ class TestSaldos:
             if cuota == 0:
                 data = {
                     "data": {
-                        "Pago_saldo_0": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_1": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             else:
                 data = {
                     "data": {
-                             f"Pago_saldo_{cuota}": "Sin informacion",
                              "fecha_actualizacion_saldos": fecha
                              }
                 }
@@ -654,7 +651,7 @@ class TestSaldos:
             self.enviarMsjInicio("fin", totalChequeos,cuota)
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
-            self.enviarRechazos()
+            #self.enviarRechazos()
             print("Fin de control de saldos C" + str(cuota))
             self.control(2)
         elif cuota == 2:
