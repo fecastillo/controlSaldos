@@ -439,7 +439,15 @@ class TestSaldos:
         msj = f"Cuota: {cuota} - Rechazadas: {self.cuotaRechazada} - Renunciadas: {self.cuotaRenunciada} - Activas: {self.cuotaActiva} - Cobradas: {self.cuotaCobrada} - Bajas: {self.cuotaBaja} - Sin informacion: {self.cuotaSinInformacion}"
         data["text"] = msj
         response = requests.post(url, data=data)
-        #print(response.json())    
+        #print(response.json())   
+    ##FUNCION PARA CREAR EL ARCHIVO DE EXCEL 
+    def create_excel_file(self, records):
+        df = pd.DataFrame(records)
+        fecha_hoy = datetime.now().strftime('%d-%m-%Y')
+        nombre_archivo = f"Rechazadas - {fecha_hoy}.xlsx"
+        with pd.ExcelWriter(nombre_archivo) as writer:
+            df.to_excel(writer, index=False, sheet_name="Rechazadas")
+        return nombre_archivo
     def enviarRechazos(self):
         self.postZohoToken()
         access_token = self.getZohoToken()
@@ -651,7 +659,9 @@ class TestSaldos:
             self.enviarMsjInicio("fin", totalChequeos,cuota)
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
-            #self.enviarRechazos()
+            ##ENVIAR ARCHIVO SOLO SI EL DIA ES LUNES O JUEVES
+            if datetime.today().weekday() == 0 or datetime.today().weekday() == 3:
+                self.enviarRechazos()
             print("Fin de control de saldos C" + str(cuota))
             self.control(2)
         elif cuota == 2:
