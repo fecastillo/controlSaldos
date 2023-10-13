@@ -448,6 +448,35 @@ class TestSaldos:
         with pd.ExcelWriter(nombre_archivo) as writer:
             df.to_excel(writer, index=False, sheet_name="Rechazadas")
         return nombre_archivo
+    
+    def send_email_with_attachment(self, sendgrid_api_key, from_email, to_emails, subject, html_content, attachment_filename):
+        message = Mail(
+            from_email=from_email,
+            to_emails=to_emails,
+            subject=subject,
+            html_content=html_content
+        )
+
+        with open(attachment_filename, "rb") as f:
+            data = f.read()
+
+        encoded_file = base64.b64encode(data).decode()
+
+        attachment = Attachment()
+        attachment.file_content = FileContent(encoded_file)
+        attachment.file_type = FileType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        attachment.file_name = FileName(attachment_filename)
+        attachment.disposition = Disposition("attachment")
+        message.attachment = attachment
+
+        try:
+            sendgrid_client = SendGridAPIClient(sendgrid_api_key)
+            response = sendgrid_client.send(message)
+            print(response.status_code)
+        except Exception as e:
+            print(f"Error al enviar correo electrónico con SendGrid: {e}")
+    
+    
     def enviarRechazos(self):
         self.postZohoToken()
         access_token = self.getZohoToken()
@@ -461,7 +490,7 @@ class TestSaldos:
         nombre_archivo = self.create_excel_file(records)
         
         from_email=os.environ.get("SENDGRID_FROM_EMAIL")
-        to_emails=[To('fernando@grupogf2.com.ar'),To('gonzalo.pero@grupogf2.com.ar'),To('florencia.pero@autocredito.net.ar'),To('emmanuel.aleman@autocredito.net.ar')]
+        to_emails=[To('fernando@grupogf2.com.ar'),To('gonzalo.pero@grupogf2.com.ar'),To('florencia.pero@autocredito.net.ar'),To('emmanuel.aleman@autocredito.net.ar'),To('camila.trimarchi@autocredito.net.ar')]
         subject=f"Rechazadas - {fecha_hoy}"
         html_content="<strong>Se adjuntan los saldos rechazados</strong>"
         
@@ -746,4 +775,3 @@ if __name__ == "__main__":
     test = TestSaldos()
     test.postZohoToken()
     test.control(0)
-    #test.enviarRechazos()
