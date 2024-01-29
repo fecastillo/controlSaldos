@@ -47,7 +47,21 @@ class TestSaldos:
         options.add_argument("--log-level=3")  # Deshabilitar el registro del navegador
         self.driver = webdriver.Chrome(options=options)
         self.vars = {}
-
+    ##defino los variables cuotas 1 rechazada, cuota 1 renunciada, cuota 1 activa, cuota 0 rechazada, cuota 0 renunciada, cuota 0 activa para poder enviarle el estado del mensaje
+        self.cuotaRechazada = 0
+        self.cuotaRenunciada = 0
+        self.cuotaActiva = 0
+        self.cuotaCobrada = 0
+        self.cuotaBaja = 0
+        self.cuotaSinInformacion = 0
+    #funcion para volver a 0 las variables de las cuotas
+    def resetCuotas(self):
+        self.cuotaRechazada = 0
+        self.cuotaRenunciada = 0
+        self.cuotaActiva = 0
+        self.cuotaCobrada = 0
+        self.cuotaBaja = 0
+        self.cuotaSinInformacion = 0
     #def __del__(self):
         #self.log_file.close()
 
@@ -167,9 +181,7 @@ class TestSaldos:
         #self.saveRecordsToExcel(all_records, "records.xlsx")
         print("Cantidad de registros: ", len(all_records))
         return all_records
-        
-
-    
+          
     def saveRecordsToExcel(self,records, filename):
         df = pd.DataFrame(records)
         df.to_excel(filename, index=False)
@@ -223,6 +235,7 @@ class TestSaldos:
         )
         headers = {"Authorization": "Zoho-oauthtoken " + access_token}
         if estado == "Cobrado":
+            self.cuotaCobrada += 1
             if cuota == 0 or cuota == '0':
                 if sorteo == 0 or sorteo == '0' or sorteo == '' or sorteo == None:
                     data = {
@@ -252,8 +265,8 @@ class TestSaldos:
                              f"Pago_saldo_{cuota}": "Pagado",
                              "fecha_actualizacion_saldos": fecha}
                 }
-                
         elif estado == "Rechazado":
+            self.cuotaRechazada += 1
             if cuota == 0:
                 data = {
                     "data": {
@@ -278,6 +291,7 @@ class TestSaldos:
                              "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Renunciado":
+            self.cuotaRenunciada += 1
             if cuota == 0:
                 data = {
                     "data": {
@@ -303,28 +317,27 @@ class TestSaldos:
                              "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Activo":
+            self.cuotaActiva += 1
             if cuota == 0:
                 data = {
                     "data": {
-                        "Pago_saldo_0": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             elif cuota == 1:
                 data = {
                     "data": {
-                        "Pago_saldo_1": "Sin informacion",
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
             else:
                 data = {
                     "data": {
-                             f"Pago_saldo_{cuota}": "Sin informacion",
                              "fecha_actualizacion_saldos": fecha
                              }
                 }
         elif estado == "Baja":
+            self.cuotaBaja += 1
             if cuota == 0 or cuota == '0':
                 data = {
                     "data": {
@@ -350,11 +363,18 @@ class TestSaldos:
                              "fecha_actualizacion_saldos": fecha}
                 }
         elif estado == "Sin informacion":
+            self.cuotaSinInformacion += 1
             data = {
                     "data": {
                         "fecha_actualizacion_saldos": fecha,
                     }
                 }
+        elif estado == "Incompleto":
+            data = {
+                "data": {
+                    "Estado": "Rechazada suscripcion digital",
+                }
+            }
         #evito que data se envio vacio
         #print(data)
         if data != {None}:
@@ -417,6 +437,72 @@ class TestSaldos:
         data["text"] = msj
         response = requests.post(url, data=data)
         #print(response.json())
+    def enviarMsjResumenCuota(self,cuota):
+        fecha = datetime.now().strftime("%d/%m/%Y")
+        url = os.environ.get("TELEGRAM_URL")
+        data = {"chat_id": os.environ.get("TELEGRAM_GROUP_ID")}
+        msj = f"Cuota: {cuota} - Rechazadas: {self.cuotaRechazada} - Renunciadas: {self.cuotaRenunciada} - Activas: {self.cuotaActiva} - Cobradas: {self.cuotaCobrada} - Bajas: {self.cuotaBaja} - Sin informacion: {self.cuotaSinInformacion}"
+        data["text"] = msj
+        response = requests.post(url, data=data)
+        #print(response.json())   
+    ##FUNCION PARA CREAR EL ARCHIVO DE EXCEL 
+    def create_excel_file(self, records):
+        df = pd.DataFrame(records)
+        fecha_hoy = datetime.now().strftime('%d-%m-%Y')
+        nombre_archivo = f"Rechazadas - {fecha_hoy}.xlsx"
+        with pd.ExcelWriter(nombre_archivo) as writer:
+            df.to_excel(writer, index=False, sheet_name="Rechazadas")
+        return nombre_archivo
+    
+    def send_email_with_attachment(self, sendgrid_api_key, from_email, to_emails, subject, html_content, attachment_filename):
+        message = Mail(
+            from_email=from_email,
+            to_emails=to_emails,
+            subject=subject,
+            html_content=html_content
+        )
+
+        with open(attachment_filename, "rb") as f:
+            data = f.read()
+
+        encoded_file = base64.b64encode(data).decode()
+
+        attachment = Attachment()
+        attachment.file_content = FileContent(encoded_file)
+        attachment.file_type = FileType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        attachment.file_name = FileName(attachment_filename)
+        attachment.disposition = Disposition("attachment")
+        message.attachment = attachment
+
+        try:
+            sendgrid_client = SendGridAPIClient(sendgrid_api_key)
+            response = sendgrid_client.send(message)
+            print(response.status_code)
+        except Exception as e:
+            print(f"Error al enviar correo electrónico con SendGrid: {e}")
+    
+    def enviarRechazos(self):
+        self.postZohoToken()
+        access_token = self.getZohoToken()
+        url = "https://creator.zoho.com/api/v2/autocredito/autocredito/report/Rechazos_Bot"
+        headers = {"Authorization": "Zoho-oauthtoken " + access_token}
+        
+        records = self.get_records_from_zoho(url, headers, 200)
+        
+        fecha_hoy = datetime.now().strftime('%d-%m-%Y')
+        
+        nombre_archivo = self.create_excel_file(records)
+        
+        from_email=os.environ.get("SENDGRID_FROM_EMAIL")
+        to_emails=[To('fernando@grupogf2.com.ar'),To('gonzalo.pero@grupogf2.com.ar'),To('florencia.pero@autocredito.net.ar'),To('emmanuel.aleman@autocredito.net.ar'),To('camila.trimarchi@autocredito.net.ar')]
+        subject=f"Rechazadas - {fecha_hoy}"
+        html_content="<strong>Se adjuntan los saldos rechazados</strong>"
+        
+        sendgrid_api_key=os.environ.get("SENDGRID_API_KEY")
+        #print(sendgrid_api_key)
+        #print(from_email)
+        #print(to_emails)
+        self.send_email_with_attachment(sendgrid_api_key, from_email, to_emails, subject, html_content, nombre_archivo)
 
     def control(self, cuota):
         #es una version mejorada y mas rapida del metodo test_saldos
@@ -435,6 +521,8 @@ class TestSaldos:
         for record in records:
             self.vars["id"] = record['ID']
             self.vars["ss"] = record['SS_completa']
+            ##OBTENER EL VALRO PREVIO A / DE LA SS
+            self.vars["nro_pre"] = self.vars["ss"].split("/", 1)[0]
             self.vars["nro_ingres"] = self.vars["ss"].split("/", 1)[1]
             self.driver.get("https://agencias.autocredito.com/extranet/agencias/consultas/datos.asp?nro_ingres={}".format(self.vars["ss"]))
             self.vars["isLogin"] = len(
@@ -475,9 +563,7 @@ class TestSaldos:
             )
             if self.vars["estado"] == "Activo":
                 self.driver.get(
-                    "https://agencias.autocredito.com/extranet/agencias/consultas/ctacte.asp?nro_pre=5&nro_ingres={nroIngres}".format(
-                        nroIngres=self.vars["nro_ingres"]
-                    )
+                    "https://agencias.autocredito.com/extranet/agencias/consultas/ctacte.asp?nro_pre={nro_pre}&nro_ingres={nroIngres}".format(nro_pre=self.vars["nro_pre"], nroIngres=self.vars["nro_ingres"])
                 )
                 self.vars["countLinea"] = len(
                     self.driver.find_elements(By.XPATH, "//table[2]/tbody/tr")
@@ -506,7 +592,7 @@ class TestSaldos:
                             estado = 'rechazado'
                         elif fecha_pago == '' or fecha_pago:
                             estado = 'activo' 
-                        print(f"cuotaRow: {cuotaRow}, cuota: {cuota}, fecha pago: {fecha_pago}")
+                        print(f"cuotaRow: {cuotaRow}, cuota: {cuota}, fecha pago: {fecha_pago}, estado: {estado}")
                         if estado == 'rechazado' and not result[cuotaRow].get('motivo'):
                             self.vars["window_handles"] = self.driver.window_handles
                             self.driver.find_element(
@@ -522,10 +608,12 @@ class TestSaldos:
                             self.driver.switch_to.window(self.vars["principal"])
                         else:
                             codigo_rechazo = ''
-                        #solo ingresar si cuotaRow coincide con el numero de cuota
-                        if int(cuotaRow) == cuota:
+                        #solo ingresar si cuotaRow ES IGUAL O MAYOR A cuota
+                        if int(cuotaRow) >= int(cuota):
                             result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
                             records = list(result.values())
+                            ##eliminar elementos vacios de la lista, por ejemplo {}
+                            records = [x for x in records if x != {}]
                             self.estadoActivo(records, cuota)
                 elif self.vars["countLinea"] == 2:
                     self.patchZohoRecord(self.vars["id"],0,'Activo',"","",'')                   
@@ -541,54 +629,13 @@ class TestSaldos:
                 ).text
                 self.driver.close()
                 self.driver.switch_to.window(self.vars["principal"])
-                ###chequeo todas cuotas para encontrar donde esta el rechazo
-                self.driver.get(
-                    "https://agencias.autocredito.com/extranet/agencias/consultas/ctacte.asp?nro_pre=5&nro_ingres={nroIngres}".format(
-                        nroIngres=self.vars["nro_ingres"]
-                    )
-                )
-                self.vars["countLinea"] = len(
-                    self.driver.find_elements(By.XPATH, "//table[2]/tbody/tr")
-                )
-                if self.vars["countLinea"] > 2:
-                    start_row = 4
-                    end_row = self.vars['countLinea'] - 2
-                    rows = self.driver.find_elements(By.XPATH, f"//table[2]/tbody/tr[position()>={start_row} and position()<={end_row}]")
-                    sums = defaultdict(int)
-                    result = defaultdict(dict)
-                    for i, row in enumerate(rows, start=start_row):
-                        first_cell = row.find_element(By.XPATH, "./td[1]")
-                        cuotaRow = first_cell.text.strip()
-                        fifth_cell = row.find_element(By.XPATH, "./td[5]")
-                        imp_pagado = float(fifth_cell.text.replace('$', '').replace('.', '').replace(',', '.'))
-                        sums[cuotaRow] += imp_pagado
-                        tenth_cell = row.find_element(By.XPATH, "./td[10]")
-                        sixth_cell = row.find_element(By.XPATH, "./td[6]")
-                        fecha_pago = sixth_cell.text.strip()
-
-                        link = tenth_cell.find_elements(By.XPATH, './/a[text()="ver motivo"]')
-                        #poner estado solo si la fecha de pago existe
-                        if fecha_pago == '':
-                            estado = 'Renunciado'
-                        elif fecha_pago != '':
-                            estado = 'activo'
-                        #estado = 'Renunciado' if fecha_pago else 'activo'
-                        if estado == 'Renunciado':
-                            codigo_rechazo = self.vars["motivoRenuncia"]
-                        else:
-                            codigo_rechazo = ''
-                        #solo ingresar si cuotaRow coincide con el numero de cuota
-                        if int(cuotaRow) == cuota:
-                            result[cuotaRow] = {'cuota': cuotaRow, 'importe': f"${sums[cuotaRow]:,.2f}", 'estado': estado or result[cuotaRow].get('estado', ''), 'motivo': codigo_rechazo or result[cuotaRow].get('motivo', ''), 'id': self.vars['id'], 'ss': self.vars['ss'], 'nroSorteo': self.vars['nroSorteo']}
-                            records = list(result.values())
-                            self.estadoRenunciado(records, cuota)
-                            print("Saldo renunciado")
-                elif self.vars["countLinea"] == 2:
-                    self.patchZohoRecord(self.vars["id"],0,'Renunciado',self.vars["motivoRenuncia"],"")       
+                self.patchZohoRecord(self.vars["id"],cuota,'Renunciado',self.vars["motivoRenuncia"],"")       
             elif self.vars["estado"] == "Baja":  # Baja de solicitud
                 self.patchZohoRecord(self.vars["id"], cuota, "Baja", "Baja", "",'')
             elif self.vars["estado"] == "Sin informacion":  # Sin informacion
                 self.patchZohoRecord(self.vars["id"], cuota, "Activo", "Sin informacion", "",'')
+            elif self.vars["estado"] == "Incompleto":  # Incompleto
+                self.patchZohoRecord(self.vars["id"], cuota, "Incompleto", "Incompleto", "",'')
             else:  # se usa para cualquier opcion que no este contemplada dentro de todo codigo de ejecucion
                 print(
                     "Solicitud: {ss} - Estado: No contemplado".format(
@@ -596,54 +643,80 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
+        if cuota == 3:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(4)
+        elif cuota == 4:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            print("Fin de control de saldos C" + str(cuota))
+            self.control(5)
         
-        self.enviarMsjInicio("fin", totalChequeos,cuota)
-        print("Fin de control de saldos C" + str(cuota))
-            
+
     def estadoRenunciado(self, record, cuotaChequeada):
-        for r in record:
-            if isinstance(r, dict):
-                if r['estado'] == 'Renunciado' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], 0, 'Renunciado', r['motivo'], '', '')
-                elif r['estado'] == 'Renunciado' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], 1, 'Renunciado', r['motivo'], '', '')
-                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], 0, 'Cobrado', '', r['nroSorteo'],)
-                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], 1, 'Cobrado', '', r['nroSorteo'],'')
-                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], 0, 'Activo', '', '','')
-                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], 1, 'Activo', '', '','')
-                else:
-                    print(f"Estado {r['estado']} no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
-            else:
-                print(f"Elemento no válido en record: {r}")
- 
-    def estadoActivo(self, record,cuotaChequeada):
-        
-        print(f"Cuota chequeada: {cuotaChequeada}")
+        ##chequear si hay mas de un elemento en record, si es asi, eliminar el primer elemento, 
         if len(record) > 1:
             newRecord = record[1:]
         else:
             newRecord = record
-
-        for r in newRecord:
-            print(r)
-            if isinstance(r, dict):
-                if r['estado'] == 'rechazado' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], r["cuota"], 'Rechazado', r['motivo'], '')
-                elif r['estado'] == 'activo' and r['importe'] != '$0.00' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], r["cuota"], 'Cobrado', '', r['nroSorteo'])
-                elif r['estado'] == 'activo' and r['importe'] == '$0.00' and r['cuota'] == str(cuotaChequeada):
-                    self.patchZohoRecord(r['id'], r["cuota"], 'Activo', '', '')
+        #condicional para ejecutar el for solo si newRecord es una lista y tiene elementos
+        if isinstance(newRecord, list) and newRecord:
+            for r in newRecord:
+               #corroborar que el elento no este vacio, que no sea {} 
+                if r != {}:
+                    if isinstance(r, dict):
+                        for r in record:
+                            if r['cuota'] <= str(7):
+                                if isinstance(r, dict):
+                                    if r['estado'] == 'Renunciado':
+                                        self.patchZohoRecord(r['id'], str(cuotaChequeada), 'Renunciado', r['motivo'], '', '')
+                                    elif r['estado'] == 'activo' and r['importe'] != '$0.00':
+                                        self.patchZohoRecord(r['id'], str(cuotaChequeada), 'Cobrado', '', r['nroSorteo'],)
+                                    elif r['estado'] == 'activo' and r['importe'] == '$0.00':
+                                        self.patchZohoRecord(r['id'], str(cuotaChequeada), 'Activo', '', '','')
+                                    else:
+                                        print(f"Estado {r['estado']} no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
+                                else:
+                                    print(f"Elemento no válido en record: {r}")
+ 
+    def estadoActivo(self, record,cuotaChequeada):
+        
+        #print(f"Cuota chequeada: {cuotaChequeada}")
+        #print(f"Record: {record}")
+        ##chequear si hay mas de un elemento en record, si es asi, eliminar el primer elemento, 
+        if len(record) > 1:
+            newRecord = record[1:]
+        else:
+            newRecord = record
+        #condicional para ejecutar el for solo si newRecord es una lista y tiene elementos
+        if isinstance(newRecord, list) and newRecord:
+            for r in newRecord:
+               #corroborar que el elento no este vacio, que no sea {} 
+                if r != {}:
+                    print(f"Elemento no vacio: {r}")
+                    if isinstance(r, dict):
+                        if r['cuota'] <= str(7):
+                            print(f"Record: {r}")
+                            if r['estado'] == 'rechazado':
+                                self.patchZohoRecord(r['id'], r["cuota"], 'Rechazado', r['motivo'], '')
+                            elif r['estado'] == 'activo' and r['importe'] != '$0.00':
+                                self.patchZohoRecord(r['id'], r["cuota"], 'Cobrado', '', r['nroSorteo'])
+                            elif r['estado'] == 'activo' and r['importe'] == '$0.00':
+                                self.patchZohoRecord(r['id'], r["cuota"], 'Activo', '', '')
+                            else:
+                                print(f"Estado activo no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
+                        else:
+                            print(f"Elemento no válido en newRecord: {r}")
                 else:
-                    print(f"Estado activo no contemplado en cuota: {r['cuota']}, Importe: {r['importe']}")
-            else:
-                print(f"Elemento no válido en newRecord: {r}")
+                    print("Elemento vacio")
+        else:
+            print(f"Elemento no válido en newRecord: {newRecord}")
 
 if __name__ == "__main__":
     test = TestSaldos()
     test.postZohoToken()
-    test.control(1)
-    #test.enviarRechazos()
+    test.control(3)
