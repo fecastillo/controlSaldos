@@ -21,6 +21,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition, To)
 from collections import defaultdict
 from dotenv import load_dotenv
+from telegram import Bot
 
 '''
 class LogFile(io.TextIOWrapper):
@@ -436,7 +437,8 @@ class TestSaldos:
             msj = "En el dia: {fecha}, se finalizo el control de saldos Cuota: {cuota}. Total chequeos: {chequeos}".format(fecha=fecha,cuota=cuota,chequeos=chequeos)
         data["text"] = msj
         response = requests.post(url, data=data)
-        #print(response.json())
+        print(response.json())
+    
     def enviarMsjResumenCuota(self,cuota):
         fecha = datetime.now().strftime("%d/%m/%Y")
         url = os.environ.get("TELEGRAM_URL")
@@ -724,5 +726,5 @@ class TestSaldos:
 
 if __name__ == "__main__":
     test = TestSaldos()
-    test.postZohoToken()
+    #test.postZohoToken()
     test.control(0)
