@@ -3,7 +3,7 @@ name: Deploy to Ubuntu Server
 on:
   push:
     branches:
-      - main  # Cambia 'main' por el nombre de tu rama principal si es diferente
+      - master  # Cambia 'main' por el nombre de tu rama principal si es diferente
 
 jobs:
   deploy:
