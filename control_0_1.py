@@ -21,23 +21,24 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition, To)
 from collections import defaultdict
 from dotenv import load_dotenv
+from telegram import Bot
 
-'''
+
 class LogFile(io.TextIOWrapper):
     def write(self, s):
         timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         super().write(f"{timestamp} {s}")
-'''
+
 
 class TestSaldos:
     def __init__(self):
         load_dotenv()
-        #self.log_file = open("output.log", "a")
-        #sys.stdout = LogFile(self.log_file.buffer)
-        #sys.stderr = LogFile(self.log_file.buffer)
-        #self.log_file = open("output.log", "a")
-        #sys.stdout = LogFile(self.log_file.buffer)
-        #sys.stderr = LogFile(self.log_file.buffer)
+        self.log_file = open("output.log", "a")
+        sys.stdout = LogFile(self.log_file.buffer)
+        sys.stderr = LogFile(self.log_file.buffer)
+        self.log_file = open("output.log", "a")
+        sys.stdout = LogFile(self.log_file.buffer)
+        sys.stderr = LogFile(self.log_file.buffer)
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--no-sandbox")
@@ -62,8 +63,8 @@ class TestSaldos:
         self.cuotaCobrada = 0
         self.cuotaBaja = 0
         self.cuotaSinInformacion = 0
-    #def __del__(self):
-        #self.log_file.close()
+    def __del__(self):
+        self.log_file.close()
 
     def setup_method(self, method):
         self.driver = webdriver.Chrome()
@@ -138,7 +139,7 @@ class TestSaldos:
                 headers = {"Authorization": "Zoho-oauthtoken " + access_token}
                 response = requests.get(formatted_url, headers=headers)
                 #print(headers)
-                print(formatted_url)
+                #print(formatted_url)
                 #print(response.json())
                 try:
                     response_json = response.json()
@@ -436,7 +437,8 @@ class TestSaldos:
             msj = "En el dia: {fecha}, se finalizo el control de saldos Cuota: {cuota}. Total chequeos: {chequeos}".format(fecha=fecha,cuota=cuota,chequeos=chequeos)
         data["text"] = msj
         response = requests.post(url, data=data)
-        #print(response.json())
+        print(response.json())
+    
     def enviarMsjResumenCuota(self,cuota):
         fecha = datetime.now().strftime("%d/%m/%Y")
         url = os.environ.get("TELEGRAM_URL")
@@ -444,7 +446,7 @@ class TestSaldos:
         msj = f"Cuota: {cuota} - Rechazadas: {self.cuotaRechazada} - Renunciadas: {self.cuotaRenunciada} - Activas: {self.cuotaActiva} - Cobradas: {self.cuotaCobrada} - Bajas: {self.cuotaBaja} - Sin informacion: {self.cuotaSinInformacion}"
         data["text"] = msj
         response = requests.post(url, data=data)
-        #print(response.json())   
+        print(response.json())   
     ##FUNCION PARA CREAR EL ARCHIVO DE EXCEL 
     def create_excel_file(self, records):
         df = pd.DataFrame(records)
@@ -643,19 +645,18 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
-        if cuota == 3:
+        if cuota == 0:
+            self.enviarMsjInicio("fin", totalChequeos,cuota)
+            self.enviarMsjResumenCuota(cuota)
+            self.resetCuotas()
+            self.control(1)
+            print("Fin de control de saldos C" + str(cuota))
+        elif cuota == 1:
             self.enviarMsjInicio("fin", totalChequeos,cuota)
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
             print("Fin de control de saldos C" + str(cuota))
-            self.control(4)
-        elif cuota == 4:
-            self.enviarMsjInicio("fin", totalChequeos,cuota)
-            self.enviarMsjResumenCuota(cuota)
-            self.resetCuotas()
-            print("Fin de control de saldos C" + str(cuota))
-            self.control(5)
-        
+            self.enviarRechazos()
 
     def estadoRenunciado(self, record, cuotaChequeada):
         ##chequear si hay mas de un elemento en record, si es asi, eliminar el primer elemento, 
@@ -718,5 +719,5 @@ class TestSaldos:
 
 if __name__ == "__main__":
     test = TestSaldos()
-    test.postZohoToken()
-    test.control(3)
+    #test.postZohoToken()
+    test.control(0)
