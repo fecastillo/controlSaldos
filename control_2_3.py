@@ -24,21 +24,9 @@ from dotenv import load_dotenv
 from telegram import Bot
 
 
-class LogFile(io.TextIOWrapper):
-    def write(self, s):
-        timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        super().write(f"{timestamp} {s}")
-
-
 class TestSaldos:
     def __init__(self):
         load_dotenv()
-        self.log_file = open("output.log", "a")
-        sys.stdout = LogFile(self.log_file.buffer)
-        sys.stderr = LogFile(self.log_file.buffer)
-        self.log_file = open("output.log", "a")
-        sys.stdout = LogFile(self.log_file.buffer)
-        sys.stderr = LogFile(self.log_file.buffer)
         options = webdriver.ChromeOptions()
         options.add_argument("--ignore-certificate-errors")
         options.add_argument("--no-sandbox")
