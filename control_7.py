@@ -631,13 +631,7 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
-        if cuota == 2:
-            self.enviarMsjInicio("fin", totalChequeos,cuota)
-            self.enviarMsjResumenCuota(cuota)
-            self.resetCuotas()
-            self.control(3)
-            print("Fin de control de saldos C" + str(cuota))
-        elif cuota == 3:
+        if cuota == 7:
             self.enviarMsjInicio("fin", totalChequeos,cuota)
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
@@ -705,4 +699,4 @@ class TestSaldos:
 if __name__ == "__main__":
     test = TestSaldos()
     #test.postZohoToken()
-    test.control(2)
+    test.control(7)

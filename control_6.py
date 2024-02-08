@@ -23,6 +23,7 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from telegram import Bot
 
+
 class TestSaldos:
     def __init__(self):
         load_dotenv()
@@ -630,13 +631,7 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
-        if cuota == 4:
-            self.enviarMsjInicio("fin", totalChequeos,cuota)
-            self.enviarMsjResumenCuota(cuota)
-            self.resetCuotas()
-            self.control(5)
-            print("Fin de control de saldos C" + str(cuota))
-        elif cuota == 4:
+        if cuota == 6:
             self.enviarMsjInicio("fin", totalChequeos,cuota)
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
@@ -704,4 +699,4 @@ class TestSaldos:
 if __name__ == "__main__":
     test = TestSaldos()
     #test.postZohoToken()
-    test.control(4)
+    test.control(6)
