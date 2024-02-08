@@ -50,8 +50,6 @@ class TestSaldos:
         self.cuotaCobrada = 0
         self.cuotaBaja = 0
         self.cuotaSinInformacion = 0
-    def __del__(self):
-        self.log_file.close()
 
     def setup_method(self, method):
         self.driver = webdriver.Chrome()
