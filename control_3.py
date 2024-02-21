@@ -23,7 +23,6 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from telegram import Bot
 
-
 class TestSaldos:
     def __init__(self):
         load_dotenv()
@@ -505,7 +504,7 @@ class TestSaldos:
             self.postZohoToken()
             self.control(cuota)
         #enviar mensaje al inicio del control
-        self.enviarMsjInicio("inicio",totalRecords,cuota)
+        #self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             self.vars["id"] = record['ID']
             self.vars["ss"] = record['SS_completa']
@@ -636,6 +635,7 @@ class TestSaldos:
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
             print("Fin de control de saldos C" + str(cuota))
+            
 
     def estadoRenunciado(self, record, cuotaChequeada):
         ##chequear si hay mas de un elemento en record, si es asi, eliminar el primer elemento, 

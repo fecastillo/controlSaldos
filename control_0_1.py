@@ -504,7 +504,7 @@ class TestSaldos:
             self.postZohoToken()
             self.control(cuota)
         #enviar mensaje al inicio del control
-        self.enviarMsjInicio("inicio",totalRecords,cuota)
+        #self.enviarMsjInicio("inicio",totalRecords,cuota)
         for record in records:
             self.vars["id"] = record['ID']
             self.vars["ss"] = record['SS_completa']
