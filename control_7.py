@@ -23,7 +23,6 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from telegram import Bot
 
-
 class TestSaldos:
     def __init__(self):
         load_dotenv()
@@ -631,11 +630,12 @@ class TestSaldos:
                     )
                 )
             totalChequeos += 1
-        if cuota == 7:
+        if cuota == 3:
             self.enviarMsjInicio("fin", totalChequeos,cuota)
             self.enviarMsjResumenCuota(cuota)
             self.resetCuotas()
             print("Fin de control de saldos C" + str(cuota))
+            
 
     def estadoRenunciado(self, record, cuotaChequeada):
         ##chequear si hay mas de un elemento en record, si es asi, eliminar el primer elemento, 
